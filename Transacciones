@@ -1,0 +1,43 @@
+CREATE TABLE customers (
+  id INT PRIMARY KEY,
+  name VARCHAR(50),
+  email VARCHAR(50),
+  balance FLOAT
+);
+INSERT INTO customers (id, name, email, balance) VALUES
+  (1, 'Juan Perez', 'juan.perez@example.com', 1000.00),
+  (2, 'Maria Garcia', 'maria.garcia@example.com', 500.00),
+  (3, 'Pedro Sanchez', 'pedro.sanchez@example.com', 250.00),
+  (4, 'Ana Gomez', 'ana.gomez@example.com', 750.00);
+
+DELIMITER //
+CREATE PROCEDURE transfer_funds(
+  IN sender_id INT,
+  IN receiver_id INT,
+  IN amount FLOAT
+)
+BEGIN
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    SELECT "Transaction failed. Changes rolled back." AS message;
+  END;
+  
+  START TRANSACTION;
+  
+  SELECT balance INTO @sender_balance FROM customers WHERE id = sender_id;
+  SELECT balance INTO @receiver_balance FROM customers WHERE id = receiver_id;
+  
+  IF (@sender_balance >= amount) THEN
+    UPDATE customers SET balance = @sender_balance - amount WHERE id = sender_id;
+    UPDATE customers SET balance = @receiver_balance + amount WHERE id = receiver_id;
+    SELECT "Transaction successful. Changes committed." AS message;
+  ELSE
+    SELECT "Insufficient funds." AS message;
+  END IF;
+  
+  COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds(1, 2, 100.00);
